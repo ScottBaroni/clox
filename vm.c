@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "debug.h"
+#include "memory.h"
 #include "vm.h"
 
 VM vm;
@@ -11,13 +12,27 @@ static void resetStack() {
 }
 
 void initVM() {
+  vm.stack = NULL;
+  vm.stackCapacity = 0;
   resetStack();
 }
 
 void freeVM() {
+  FREE_ARRAY(Value, vm.stack, vm.stackCapacity);
+  vm.stack = NULL;
+  vm.stackTop = NULL;
+  vm.stackCapacity = 0;
 }
 
 void push(Value value) {
+  int count = vm.stack == NULL ? 0 : (int)(vm.stackTop - vm.stack);
+  if (vm.stackCapacity < count + 1) {
+    int oldCapacity = vm.stackCapacity;
+    vm.stackCapacity = GROW_CAPACITY(oldCapacity);
+    vm.stack = GROW_ARRAY(Value, vm.stack,
+                          oldCapacity, vm.stackCapacity);
+    vm.stackTop = vm.stack + count; // realloc may have moved the array
+  }
   *vm.stackTop = value;
   vm.stackTop++;
 }

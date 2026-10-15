@@ -6,11 +6,10 @@ int main(int argc, const char* argv[]) {
   Chunk chunk;
   initChunk(&chunk);
 
-  int constant = addConstant(&chunk, 1.2);
-  writeChunk(&chunk, OP_CONSTANT, 123);
-  writeChunk(&chunk, constant, 123);
-
-  writeChunk(&chunk, OP_RETURN, 123);
+  for (int i = 0; i < 300; i++) {
+    writeConstant(&chunk, i, 123 + i / 50);
+  }
+  writeChunk(&chunk, OP_RETURN, 129);
 
   disassembleChunk(&chunk, "test chunk");
   freeChunk(&chunk);

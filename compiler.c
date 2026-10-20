@@ -19,6 +19,7 @@ typedef struct {
 typedef enum {
   PREC_NONE,
   PREC_ASSIGNMENT,  // =
+  PREC_TERNARY,
   PREC_OR,          // or
   PREC_AND,         // and
   PREC_EQUALITY,    // == !=
@@ -144,6 +145,13 @@ static void binary() {
   }
 }
 
+static void ternary() {
+  // The condition is already compiled and '?' consumed.
+  parsePrecedence(PREC_ASSIGNMENT);   // then-branch: any expression
+  consume(TOKEN_COLON, "Expect ':' after then branch of conditional.");
+  parsePrecedence(PREC_TERNARY);      // else-branch: same level => right-associative
+}
+
 static void grouping() {
   expression();
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
@@ -208,6 +216,8 @@ ParseRule rules[] = {
   [TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_ERROR]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_EOF]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_QUESTION] = {NULL, ternary, PREC_TERNARY},
+  [TOKEN_COLON] = {NULL, NULL, PREC_NONE},
 };
 
 static void parsePrecedence(Precedence precedence) {

@@ -210,6 +210,8 @@ Token scanToken() {
       return makeToken(
           match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
     case '"': return string();
+    case '?': return makeToken(TOKEN_QUESTION);
+    case ':': return makeToken(TOKEN_COLON);
   }
 
   return errorToken("Unexpected character.");

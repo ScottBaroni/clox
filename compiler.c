@@ -143,8 +143,18 @@ static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 
 static uint8_t identifierConstant(Token* name) {
-  return makeConstant(OBJ_VAL(copyString(name->start,
-                                         name->length)));
+  ObjString* string = copyString(name->start, name->length);
+  Chunk* chunk = currentChunk();
+
+  // Strings are interned, so pointer equality means same name.
+  for (int i = 0; i < chunk->constants.count; i++) {
+    Value existing = chunk->constants.values[i];
+    if (IS_STRING(existing) && AS_STRING(existing) == string) {
+      return (uint8_t)i;
+    }
+  }
+
+  return makeConstant(OBJ_VAL(string));
 }
 
 static uint8_t parseVariable(const char* errorMessage) {

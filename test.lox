@@ -1,11 +1,30 @@
-var i = 0;
-while (i < 3) {
-  print i;
-  i = i + 1;
+fun areWeHavingItYet() {
+  print "Yes we are!";
 }
-for (var j = 0; j < 3; j = j + 1) print j * 10;
-if (i == 3) print "three"; else print "not three";
-print nil or "default";
-print false and "never";
-print 1 and 2;
-print 0 or 5;
+
+print areWeHavingItYet;
+areWeHavingItYet();
+
+fun sum(a, b, c) {
+  return a + b + c;
+}
+print 4 + sum(5, 6, 7);
+
+fun noReturn() { }
+print noReturn();
+
+fun outer() {
+  fun inner(x) { return x * 2; }
+  return inner(21);
+}
+print outer();
+
+print clock;
+
+fun fib(n) {
+  if (n < 2) return n;
+  return fib(n - 2) + fib(n - 1);
+}
+var start = clock();
+print fib(25);
+print clock() - start;

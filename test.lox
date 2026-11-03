@@ -1,16 +1,11 @@
-var a = "global";
-{
-  var a = "outer";
-  {
-    var a = "inner";
-    print a;
-  }
-  print a;
+var i = 0;
+while (i < 3) {
+  print i;
+  i = i + 1;
 }
-print a;
-{
-  var x = 1;
-  var y = 2;
-  x = x + y;
-  print x;
-}
+for (var j = 0; j < 3; j = j + 1) print j * 10;
+if (i == 3) print "three"; else print "not three";
+print nil or "default";
+print false and "never";
+print 1 and 2;
+print 0 or 5;

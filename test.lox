@@ -1,11 +1,8 @@
-var i = 0;
-while (i < 3) {
-  print i;
-  i = i + 1;
+var x = 2;
+switch (x) {
+  case 1: print "one";
+  case 2: print "two"; var t = 5; print t;
+  case 3: print "three";
+  default: print "other";
 }
-for (var j = 0; j < 3; j = j + 1) print j * 10;
-if (i == 3) print "three"; else print "not three";
-print nil or "default";
-print false and "never";
-print 1 and 2;
-print 0 or 5;
+print "after";

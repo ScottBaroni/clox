@@ -553,6 +553,82 @@ static void printStatement() {
   emitByte(OP_PRINT);
 }
 
+static void switchStatement() {
+  beginScope();
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'switch'.");
+  expression();
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after value.");
+  consume(TOKEN_LEFT_BRACE, "Expect '{' before switch cases.");
+
+  // The switch value is now on top of the stack. Make it a hidden
+  // local (the empty name can never match a real identifier).
+  Token hidden;
+  hidden.type = TOKEN_IDENTIFIER;
+  hidden.start = "";
+  hidden.length = 0;
+  hidden.line = parser.previous.line;
+  addLocal(hidden);
+  markInitialized();
+  int slot = current->localCount - 1;
+
+  int caseEnds[UINT8_COUNT];
+  int caseCount = 0;
+  bool seenDefault = false;
+
+  while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+    if (match(TOKEN_CASE)) {
+      if (seenDefault) {
+        error("Can't have a case after the default case.");
+      }
+
+      emitBytes(OP_GET_LOCAL, (uint8_t)slot);
+      expression();
+      consume(TOKEN_COLON, "Expect ':' after case value.");
+      emitByte(OP_EQUAL);
+      int skipJump = emitJump(OP_JUMP_IF_FALSE);
+      emitByte(OP_POP); // Comparison result (matched).
+
+      beginScope();
+      while (!check(TOKEN_CASE) && !check(TOKEN_DEFAULT) &&
+             !check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+        declaration();
+      }
+      endScope();
+
+      if (caseCount == UINT8_COUNT) {
+        error("Too many cases in switch.");
+      } else {
+        caseEnds[caseCount++] = emitJump(OP_JUMP);
+      }
+
+      patchJump(skipJump);
+      emitByte(OP_POP); // Comparison result (didn't match).
+    } else if (match(TOKEN_DEFAULT)) {
+      if (seenDefault) error("Can't have more than one default case.");
+      seenDefault = true;
+      consume(TOKEN_COLON, "Expect ':' after 'default'.");
+
+      beginScope();
+      while (!check(TOKEN_CASE) && !check(TOKEN_DEFAULT) &&
+             !check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+        declaration();
+      }
+      endScope();
+    } else {
+      errorAtCurrent("Expect 'case' or 'default'.");
+      advance();
+    }
+  }
+
+  consume(TOKEN_RIGHT_BRACE, "Expect '}' after switch cases.");
+
+  for (int i = 0; i < caseCount; i++) {
+    patchJump(caseEnds[i]);
+  }
+
+  endScope(); // Pops the hidden switch value.
+}
+
 static void whileStatement() {
   int loopStart = currentChunk()->count;
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
@@ -611,6 +687,8 @@ static void statement() {
     ifStatement();
   } else if (match(TOKEN_WHILE)) {
     whileStatement();
+  } else if (match(TOKEN_SWITCH)) {
+    switchStatement(); 
   } else if (match(TOKEN_LEFT_BRACE)) {
     beginScope();
     block();

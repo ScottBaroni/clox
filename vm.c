@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
 #include "common.h"
 #include "compiler.h"
@@ -12,8 +13,22 @@
 
 VM vm;
 
-static Value clockNative(int argCount, Value* args) {
-  return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+static bool clockNative(int argCount, Value* args, Value* result) {
+  *result = NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+  return true;
+}
+
+
+static bool inputNative(int argCount, Value* args, Value* result) {
+  char buffer[1024];
+  if (!fgets(buffer, sizeof(buffer), stdin)) {
+    *result = NIL_VAL;
+    return true;
+  }
+  int length = (int)strlen(buffer);
+  if (length > 0 && buffer[length - 1] == '\n') length--;
+  *result = OBJ_VAL(copyString(buffer, length));
+  return true;
 }
 
 static void resetStack() {
@@ -44,9 +59,40 @@ static void runtimeError(const char* format, ...) {
   resetStack();
 }
 
-static void defineNative(const char* name, NativeFn function) {
+static bool sqrtNative(int argCount, Value* args, Value* result) {
+  if (!IS_NUMBER(args[0])) {
+    runtimeError("sqrt() expects a number.");
+    return false;
+  }
+  *result = NUMBER_VAL(sqrt(AS_NUMBER(args[0])));
+  return true;
+}
+
+static bool lenNative(int argCount, Value* args, Value* result) {
+  if (!IS_STRING(args[0])) {
+    runtimeError("len() expects a string.");
+    return false;
+  }
+  *result = NUMBER_VAL(AS_STRING(args[0])->length);
+  return true;
+}
+
+static bool strNative(int argCount, Value* args, Value* result) {
+  if (!IS_NUMBER(args[0])) {
+    runtimeError("str() expects a number.");
+    return false;
+  }
+  char buffer[64];
+  int length = snprintf(buffer, sizeof(buffer), "%g",
+                        AS_NUMBER(args[0]));
+  *result = OBJ_VAL(copyString(buffer, length));
+  return true;
+}
+
+static void defineNative(const char* name, NativeFn function,
+                         int arity) {
   push(OBJ_VAL(copyString(name, (int)strlen(name))));
-  push(OBJ_VAL(newNative(function)));
+  push(OBJ_VAL(newNative(function, arity)));
   tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
   pop();
   pop();
@@ -59,7 +105,11 @@ void initVM() {
   initTable(&vm.globals);
   initTable(&vm.strings);
 
-  defineNative("clock", clockNative);
+  defineNative("clock", clockNative, 0);
+  defineNative("sqrt", sqrtNative, 1);
+  defineNative("len", lenNative, 1);
+  defineNative("str", strNative, 1);
+  defineNative("input", inputNative, 0);
 }
 
 void freeVM() {
@@ -107,8 +157,17 @@ static bool callValue(Value callee, int argCount) {
       case OBJ_FUNCTION:
         return call(AS_FUNCTION(callee), argCount);
       case OBJ_NATIVE: {
-        NativeFn native = AS_NATIVE(callee);
-        Value result = native(argCount, vm.stackTop - argCount);
+        ObjNative* native = AS_NATIVE_OBJ(callee);
+        if (native->arity >= 0 && argCount != native->arity) {
+          runtimeError("Expected %d arguments but got %d.",
+                       native->arity, argCount);
+          return false;
+        }
+        Value result;
+        if (!native->function(argCount, vm.stackTop - argCount,
+                              &result)) {
+          return false;   // The native already reported the error.
+        }
         vm.stackTop -= argCount + 1;
         push(result);
         return true;

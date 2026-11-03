@@ -1,11 +1,12 @@
-var i = 0;
-while (i < 3) {
+for (var i = 0; i < 5; i = i + 1) {
+  if (i == 2) continue;
   print i;
-  i = i + 1;
 }
-for (var j = 0; j < 3; j = j + 1) print j * 10;
-if (i == 3) print "three"; else print "not three";
-print nil or "default";
-print false and "never";
-print 1 and 2;
-print 0 or 5;
+
+var n = 0;
+for (var k = 0; k < 100000; k = k + 1) {
+  var tmp = k;
+  if (k > 3) continue;
+  n = n + 1;
+}
+print n;

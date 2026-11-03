@@ -50,8 +50,15 @@ typedef struct {
   int scopeDepth;
 } Compiler;
 
+typedef struct Loop {
+  int start;          // Where `continue` jumps to.
+  int scopeDepth;     // Scope depth outside the loop body.
+  struct Loop* enclosing;
+} Loop;
+
 Parser parser;
 Compiler* current = NULL;
+Loop* currentLoop = NULL;
 Chunk* compilingChunk;
 
 static Chunk* currentChunk() {
@@ -501,7 +508,6 @@ static void forStatement() {
     expression();
     consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
 
-    // Jump out of the loop if the condition is false.
     exitJump = emitJump(OP_JUMP_IF_FALSE);
     emitByte(OP_POP); // Condition.
   }
@@ -518,7 +524,15 @@ static void forStatement() {
     patchJump(bodyJump);
   }
 
+  Loop loop;
+  loop.start = loopStart; // The increment if there is one.
+  loop.scopeDepth = current->scopeDepth;
+  loop.enclosing = currentLoop;
+  currentLoop = &loop;
+
   statement();
+
+  currentLoop = loop.enclosing;
   emitLoop(loopStart);
 
   if (exitJump != -1) {
@@ -561,11 +575,37 @@ static void whileStatement() {
 
   int exitJump = emitJump(OP_JUMP_IF_FALSE);
   emitByte(OP_POP);
+
+  Loop loop;
+  loop.start = loopStart;
+  loop.scopeDepth = current->scopeDepth;
+  loop.enclosing = currentLoop;
+  currentLoop = &loop;
+
   statement();
+
+  currentLoop = loop.enclosing;
   emitLoop(loopStart);
 
   patchJump(exitJump);
   emitByte(OP_POP);
+}
+
+static void continueStatement() {
+  consume(TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
+  if (currentLoop == NULL) {
+    error("Can't use 'continue' outside of a loop.");
+    return;
+  }
+
+  // Discard locals declared inside the loop body before jumping.
+  for (int i = current->localCount - 1;
+       i >= 0 && current->locals[i].depth > currentLoop->scopeDepth;
+       i--) {
+    emitByte(OP_POP);
+  }
+
+  emitLoop(currentLoop->start);
 }
 
 static void synchronize() {
@@ -604,7 +644,9 @@ static void declaration() {
 
 static void statement() {
   if (match(TOKEN_PRINT)) {
-    printStatement();
+    printStatement();  
+  } else if (match(TOKEN_CONTINUE)) {
+    continueStatement();
   } else if (match(TOKEN_FOR)) {
     forStatement();
   } else if (match(TOKEN_IF)) {
@@ -625,6 +667,8 @@ bool compile(const char* source, Chunk* chunk) {
   Compiler compiler;
   initCompiler(&compiler);
   compilingChunk = chunk;
+
+  currentLoop = NULL;
 
   parser.hadError = false;
   parser.panicMode = false;

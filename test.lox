@@ -1,9 +1,16 @@
-var beverage = "cafe au lait";
-var breakfast = "beignets with " + beverage;
-print breakfast;
-breakfast = "beignets with " + "tea";
-print breakfast;
-var a = 1;
-var a = 2;
+var a = "global";
+{
+  var a = "outer";
+  {
+    var a = "inner";
+    print a;
+  }
+  print a;
+}
 print a;
-1 + 2;
+{
+  var x = 1;
+  var y = 2;
+  x = x + y;
+  print x;
+}

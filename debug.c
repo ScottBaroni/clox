@@ -32,6 +32,14 @@ static int byteInstruction(const char* name, Chunk* chunk,
   return offset + 2;
 }
 
+static int shortInstruction(const char* name, Chunk* chunk,
+                            int offset) {
+  uint16_t slot = (uint16_t)((chunk->code[offset + 1] << 8) |
+                             chunk->code[offset + 2]);
+  printf("%-16s %4d\n", name, slot);
+  return offset + 3;
+}
+
 int disassembleInstruction(Chunk* chunk, int offset) {
   printf("%04d ", offset);
   if (offset > 0 &&
@@ -57,6 +65,10 @@ int disassembleInstruction(Chunk* chunk, int offset) {
       return byteInstruction("OP_GET_LOCAL", chunk, offset);
     case OP_SET_LOCAL:
       return byteInstruction("OP_SET_LOCAL", chunk, offset);
+    case OP_GET_LOCAL_LONG:
+      return shortInstruction("OP_GET_LOCAL_LONG", chunk, offset);
+    case OP_SET_LOCAL_LONG:
+      return shortInstruction("OP_SET_LOCAL_LONG", chunk, offset);
     case OP_GET_GLOBAL:
       return constantInstruction("OP_GET_GLOBAL", chunk, offset);
     case OP_DEFINE_GLOBAL:

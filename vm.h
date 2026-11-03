@@ -10,7 +10,7 @@
 typedef struct {
   Chunk* chunk;
   uint8_t* ip;
-  Value stack[STACK_MAX];
+  Value stack[(UINT16_COUNT + UINT8_COUNT)];
   Value* stackTop;
   Table globals;
   Table strings;

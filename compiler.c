@@ -5,6 +5,7 @@
 #include "common.h"
 #include "compiler.h"
 #include "scanner.h"
+#include "memory.h"
 
 #ifdef DEBUG_PRINT_CODE
 #include "debug.h"
@@ -45,7 +46,8 @@ typedef struct {
 } Local;
 
 typedef struct {
-  Local locals[UINT8_COUNT];
+  Local* locals;
+  int localCapacity;
   int localCount;
   int scopeDepth;
 } Compiler;
@@ -141,9 +143,17 @@ static void emitConstant(Value value) {
 }
 
 static void initCompiler(Compiler* compiler) {
+  compiler->locals = NULL;
+  compiler->localCapacity = 0;
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
   current = compiler;
+}
+
+static void freeCompiler(Compiler* compiler) {
+  FREE_ARRAY(Local, compiler->locals, compiler->localCapacity);
+  compiler->locals = NULL;
+  compiler->localCapacity = 0;
 }
 
 static void endCompiler() {
@@ -201,9 +211,16 @@ static int resolveLocal(Compiler* compiler, Token* name) {
 }
 
 static void addLocal(Token name) {
-  if (current->localCount == UINT8_COUNT) {
+  if (current->localCount == UINT16_COUNT) {
     error("Too many local variables in function.");
     return;
+  }
+
+  if (current->localCapacity < current->localCount + 1) {
+    int oldCapacity = current->localCapacity;
+    current->localCapacity = GROW_CAPACITY(oldCapacity);
+    current->locals = GROW_ARRAY(Local, current->locals,
+                                 oldCapacity, current->localCapacity);
   }
 
   Local* local = &current->locals[current->localCount++];
@@ -296,23 +313,34 @@ static void string(bool canAssign) {
                                   parser.previous.length - 2)));
 }
 
-static void namedVariable(Token name, bool canAssign) {
-  uint8_t getOp, setOp;
-  int arg = resolveLocal(current, &name);
-  if (arg != -1) {
-    getOp = OP_GET_LOCAL;
-    setOp = OP_SET_LOCAL;
+static void emitLocalOp(uint8_t op, uint8_t longOp, int slot) {
+  if (slot <= UINT8_MAX) {
+    emitBytes(op, (uint8_t)slot);
   } else {
-    arg = identifierConstant(&name);
-    getOp = OP_GET_GLOBAL;
-    setOp = OP_SET_GLOBAL;
+    emitByte(longOp);
+    emitByte((uint8_t)((slot >> 8) & 0xff));
+    emitByte((uint8_t)(slot & 0xff));
   }
+}
+
+static void namedVariable(Token name, bool canAssign) {
+  int slot = resolveLocal(current, &name);
+  bool isLocal = slot != -1;
+  uint8_t arg = isLocal ? 0 : identifierConstant(&name);
 
   if (canAssign && match(TOKEN_EQUAL)) {
     expression();
-    emitBytes(setOp, (uint8_t)arg);
+    if (isLocal) {
+      emitLocalOp(OP_SET_LOCAL, OP_SET_LOCAL_LONG, slot);
+    } else {
+      emitBytes(OP_SET_GLOBAL, arg);
+    }
   } else {
-    emitBytes(getOp, (uint8_t)arg);
+    if (isLocal) {
+      emitLocalOp(OP_GET_LOCAL, OP_GET_LOCAL_LONG, slot);
+    } else {
+      emitBytes(OP_GET_GLOBAL, arg);
+    }
   }
 }
 
@@ -503,5 +531,6 @@ bool compile(const char* source, Chunk* chunk) {
   }
 
   endCompiler();
+  freeCompiler(&compiler);
   return !parser.hadError;
 }

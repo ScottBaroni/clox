@@ -1,0 +1,25 @@
+fun vector(x, y) {
+  fun dispatch(message) {
+    if (message == "x") return x;
+    if (message == "y") return y;
+    if (message == "add") {
+      fun add(other) {
+        return vector(x + other("x"), y + other("y"));
+      }
+      return add;
+    }
+    return nil;
+  }
+  return dispatch;
+}
+
+fun vx(v) { return v("x"); }
+fun vy(v) { return v("y"); }
+fun vadd(a, b) { return a("add")(b); }
+
+var a = vector(1, 2);
+var b = vector(10, 20);
+var c = vadd(a, b);
+print vx(c);
+print vy(c);
+print vx(a);

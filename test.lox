@@ -1,30 +1,73 @@
-fun areWeHavingItYet() {
-  print "Yes we are!";
-}
-
-print areWeHavingItYet;
-areWeHavingItYet();
-
-fun sum(a, b, c) {
-  return a + b + c;
-}
-print 4 + sum(5, 6, 7);
-
-fun noReturn() { }
-print noReturn();
-
+var x = "global";
 fun outer() {
-  fun inner(x) { return x * 2; }
-  return inner(21);
+  var x = "outer";
+  fun inner() {
+    print x;
+  }
+  inner();
 }
-print outer();
+outer();
 
-print clock;
-
-fun fib(n) {
-  if (n < 2) return n;
-  return fib(n - 2) + fib(n - 1);
+fun makeClosure(value) {
+  fun closure() {
+    print value;
+  }
+  return closure;
 }
-var start = clock();
-print fib(25);
-print clock() - start;
+var doughnut = makeClosure("doughnut");
+var bagel = makeClosure("bagel");
+doughnut();
+bagel();
+
+fun outer2() {
+  var x = "value";
+  fun middle() {
+    fun inner() {
+      print x;
+    }
+
+    print "create inner closure";
+    return inner;
+  }
+
+  print "return from outer";
+  return middle;
+}
+var mid = outer2();
+var in = mid();
+in();
+
+var globalSet;
+var globalGet;
+fun main() {
+  var a = "initial";
+  fun set() { a = "updated"; }
+  fun get() { print a; }
+  globalSet = set;
+  globalGet = get;
+}
+main();
+globalSet();
+globalGet();
+
+fun makeCounter() {
+  var i = 0;
+  fun count() {
+    i = i + 1;
+    print i;
+  }
+  return count;
+}
+var c1 = makeCounter();
+var c2 = makeCounter();
+c1();
+c1();
+c2();
+
+var f;
+{
+  var a = "captured in a block";
+  fun g() { print a; }
+  f = g;
+}
+f();

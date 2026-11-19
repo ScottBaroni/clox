@@ -9,7 +9,8 @@
 #define STACK_MAX (FRAMES_MAX * UINT8_COUNT)
 
 typedef struct {
-  ObjClosure* closure;
+  ObjFunction* function;
+  ObjClosure* closure;   // NULL for functions that capture nothing
   uint8_t* ip;
   Value* slots;
 } CallFrame;

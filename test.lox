@@ -1,73 +1,19 @@
-var x = "global";
-fun outer() {
-  var x = "outer";
-  fun inner() {
-    print x;
-  }
-  inner();
-}
-outer();
+var globalOne;
+var globalTwo;
 
-fun makeClosure(value) {
-  fun closure() {
-    print value;
-  }
-  return closure;
-}
-var doughnut = makeClosure("doughnut");
-var bagel = makeClosure("bagel");
-doughnut();
-bagel();
-
-fun outer2() {
-  var x = "value";
-  fun middle() {
-    fun inner() {
-      print x;
-    }
-
-    print "create inner closure";
-    return inner;
-  }
-
-  print "return from outer";
-  return middle;
-}
-var mid = outer2();
-var in = mid();
-in();
-
-var globalSet;
-var globalGet;
 fun main() {
-  var a = "initial";
-  fun set() { a = "updated"; }
-  fun get() { print a; }
-  globalSet = set;
-  globalGet = get;
-}
-main();
-globalSet();
-globalGet();
-
-fun makeCounter() {
-  var i = 0;
-  fun count() {
-    i = i + 1;
-    print i;
+  for (var a = 1; a <= 2; a = a + 1) {
+    fun closure() {
+      print a;
+    }
+    if (globalOne == nil) {
+      globalOne = closure;
+    } else {
+      globalTwo = closure;
+    }
   }
-  return count;
 }
-var c1 = makeCounter();
-var c2 = makeCounter();
-c1();
-c1();
-c2();
 
-var f;
-{
-  var a = "captured in a block";
-  fun g() { print a; }
-  f = g;
-}
-f();
+main();
+globalOne();
+globalTwo();

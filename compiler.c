@@ -626,10 +626,15 @@ static void expressionStatement() {
 static void forStatement() {
   beginScope();
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+
+  int loopVariable = -1;         // slot of the outer loop variable
+  Token loopVariableName = {0};
   if (match(TOKEN_SEMICOLON)) {
     // No initializer.
   } else if (match(TOKEN_VAR)) {
     varDeclaration();
+    loopVariable = current->localCount - 1;
+    loopVariableName = current->locals[loopVariable].name;
   } else {
     expressionStatement();
   }
@@ -657,7 +662,25 @@ static void forStatement() {
     patchJump(bodyJump);
   }
 
-  statement();
+  if (loopVariable != -1) {
+    // Give this iteration its own copy of the loop variable.
+    beginScope();
+    emitBytes(OP_GET_LOCAL, (uint8_t)loopVariable);
+    addLocal(loopVariableName);
+    markInitialized();
+    int innerVariable = current->localCount - 1;
+
+    statement();
+
+    // Copy the (possibly modified) value back to the outer variable.
+    emitBytes(OP_GET_LOCAL, (uint8_t)innerVariable);
+    emitBytes(OP_SET_LOCAL, (uint8_t)loopVariable);
+    emitByte(OP_POP);
+
+    endScope(); // Closes the inner variable if a closure captured it.
+  } else {
+    statement();
+  }
   emitLoop(loopStart);
 
   if (exitJump != -1) {
